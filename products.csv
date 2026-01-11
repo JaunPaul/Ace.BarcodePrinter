@@ -1,5 +1,5 @@
-Item Name,Price,SKU
-Apple Juice,$2.50,AJ001
-Banana Bread,$4.00,BB002
-Cherry Pie,$5.50,CP003
-Donut,$1.00,DN004
+Item Name,Price,SKU,Stock
+Apple Juice,$2.50,AJ001,10
+Banana Bread,$4.00,BB002,5
+Cherry Pie,$5.50,CP003,2
+Donut,$1.00,DN004,20
