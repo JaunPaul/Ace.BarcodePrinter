@@ -343,7 +343,7 @@ func main() {
 }
 
 func loadDefaultTemplate() string {
-    content, err := os.ReadFile("ace_label_template_small_barcode.prn")
+    content, err := os.ReadFile("ace_label_template.prn")
     if err == nil {
         return string(content)
     }
