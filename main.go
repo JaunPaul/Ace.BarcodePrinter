@@ -343,7 +343,7 @@ func main() {
 }
 
 func loadDefaultTemplate() string {
-    content, err := os.ReadFile("ACE_50X30.prn")
+    content, err := os.ReadFile("ACE_50X30.zpl")
     if err == nil {
         // Strip BOM if present
         s := string(content)
