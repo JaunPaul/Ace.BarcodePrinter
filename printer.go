@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -61,42 +60,30 @@ func GetPrinters() ([]string, error) {
 }
 
 // SendToPrinter sends the raw ZPL data to a Windows printer
-// It uses "cmd /c copy /b" which is robust for raw printing on Windows
 func SendToPrinter(printerName string, data []byte) error {
-	// Create a temporary file
-	tempDir := os.TempDir()
-	tempFile := filepath.Join(tempDir, "label_print_job.zpl")
-	
 	// Ensure data has a trailing newline
 	if len(data) > 0 && data[len(data)-1] != '\n' {
 		data = append(data, '\n')
 	}
 
-	err := os.WriteFile(tempFile, data, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %v", err)
-	}
-	// defer os.Remove(tempFile) // Optional: keep for debugging if needed, or remove
-
+	// For Windows, writing directly to the UNC path \\localhost\PrinterName is more robust
+	// than using `cmd /c copy` because it avoids shell quoting issues.
 	if runtime.GOOS == "windows" {
-		// Construct the printer path. 
-		// If it's a shared printer or local, accessing via \\localhost\PrinterName often works best for raw copying
-		// Alternatively, if it's just a local printer name, we can try to copy directly to the port if it was LPT1,
-		// but for USB printers, sharing it and using the share name is the most reliable "simple" method.
-		
 		destination := fmt.Sprintf("\\\\localhost\\%s", printerName)
-		
-		// Command: cmd /c copy /b <file> <destination>
-		cmd := exec.Command("cmd", "/c", "copy", "/b", tempFile, destination)
-		output, err := cmd.CombinedOutput()
+		// Write directly to the printer share
+		// os.WriteFile handles open/write/close
+		err := os.WriteFile(destination, data, 0644)
 		if err != nil {
-			return fmt.Errorf("print command failed: %v, output: %s", err, string(output))
+			// If direct write fails, try fallback or just return error
+			return fmt.Errorf("failed to send to printer %s: %v", destination, err)
 		}
+		return nil
 	} else {
-		// Linux/Mac fallback for testing (mock)
-		fmt.Printf("MOCK PRINTING to %s:\n%s\n", printerName, string(data))
+		// Linux/Mac fallback (`lp` or mock)
+		// For consistency with previous logic, we can keep using lp command or mock
+		fmt.Printf("MOCK PRINTING to %s: [Data Length %d]\n", printerName, len(data))
+		return nil
 	}
-
-	return nil
 }
+
 
