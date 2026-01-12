@@ -67,6 +67,11 @@ func SendToPrinter(printerName string, data []byte) error {
 	tempDir := os.TempDir()
 	tempFile := filepath.Join(tempDir, "label_print_job.zpl")
 	
+	// Ensure data has a trailing newline
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		data = append(data, '\n')
+	}
+
 	err := os.WriteFile(tempFile, data, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %v", err)
@@ -81,13 +86,11 @@ func SendToPrinter(printerName string, data []byte) error {
 		
 		destination := fmt.Sprintf("\\\\localhost\\%s", printerName)
 		
-		// Use explicit quoting for safety against spaces in paths/names
-		// cmd /c "copy /b "source" "dest""
-		commandStr := fmt.Sprintf("copy /b \"%s\" \"%s\"", tempFile, destination)
-		cmd := exec.Command("cmd", "/c", commandStr)
+		// Command: cmd /c copy /b <file> <destination>
+		cmd := exec.Command("cmd", "/c", "copy", "/b", tempFile, destination)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("print command failed: %v, output: %s, command: %s", err, string(output), commandStr)
+			return fmt.Errorf("print command failed: %v, output: %s", err, string(output))
 		}
 	} else {
 		// Linux/Mac fallback for testing (mock)
