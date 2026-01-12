@@ -252,22 +252,6 @@ func main() {
 		fd.Show()
 	})
 
-	// 5. Log Window
-	logEntry := widget.NewMultiLineEntry()
-	logEntry.Disable() // Read-only mostly, but user might want to copy
-	logEntry.SetMinRowsVisible(5)
-	logEntry.SetPlaceHolder("Log output will appear here...")
-
-	logFunc := func(format string, a ...interface{}) {
-		msg := fmt.Sprintf(format, a...)
-		logEntry.SetText(logEntry.Text + "\n" + msg)
-		logEntry.Refresh()
-		// Auto-scroll to bottom roughly
-		logEntry.CursorRow = len(strings.Split(logEntry.Text, "\n"))
-	}
-
-	// Layout...
-	
 	// Print Button Logic
 	printBtn := widget.NewButton("Print Labels", func() {
 		if len(items) == 0 {
@@ -283,9 +267,6 @@ func main() {
 		successCount := 0
 		totalLabels := 0
 		
-		logFunc("--- Starting Print Job ---")
-		logFunc("Printer: %s", pName)
-
 		for _, item := range items {
 			q, err := strconv.Atoi(item.Qty)
 			if err != nil || q <= 0 {
@@ -300,15 +281,11 @@ func main() {
 			
 			zpl := ProcessTemplate(templateContent, replacements)
 			
-			logFunc("Printing Item: %s (Qty: %d)", item.Name, q)
-			logFunc("Sent ZPL:\n%s", zpl)
-			
 			// Send to printer q times
 			for i := 0; i < q; i++ {
 				err := SendToPrinter(pName, []byte(zpl))
 				if err != nil {
 					statusLabel.SetText(fmt.Sprintf("Error printing %s: %v", item.Name, err))
-					logFunc("ERROR: %v", err)
 					return
 				}
 			}
@@ -318,7 +295,6 @@ func main() {
 		
 		statusLabel.SetText(fmt.Sprintf("Sent jobs for %d items (%d total labels)", successCount, totalLabels))
 		dialog.ShowInformation("Complete", fmt.Sprintf("Printed %d labels.", totalLabels), w)
-		logFunc("--- Print Job Complete ---")
 	})
 
 	// Layout
@@ -342,9 +318,6 @@ func main() {
 		),
 		printBtn,
 		statusLabel,
-		widget.NewSeparator(),
-		widget.NewLabel("Log Output:"),
-		container.NewGridWrap(fyne.NewSize(780, 150), logEntry), // Scrollable log area
 		widget.NewSeparator(),
 		widget.NewLabel("Review Items (Edit Quantity in Table):"),
 	)
