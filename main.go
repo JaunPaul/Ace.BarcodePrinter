@@ -252,6 +252,22 @@ func main() {
 		fd.Show()
 	})
 
+	// 5. Log Window
+	logEntry := widget.NewMultiLineEntry()
+	logEntry.Disable() // Read-only mostly, but user might want to copy
+	logEntry.SetMinRowsVisible(5)
+	logEntry.SetPlaceHolder("Log output will appear here...")
+
+	logFunc := func(format string, a ...interface{}) {
+		msg := fmt.Sprintf(format, a...)
+		logEntry.SetText(logEntry.Text + "\n" + msg)
+		logEntry.Refresh()
+		// Auto-scroll to bottom roughly
+		logEntry.CursorRow = len(strings.Split(logEntry.Text, "\n"))
+	}
+
+	// Layout...
+	
 	// Print Button Logic
 	printBtn := widget.NewButton("Print Labels", func() {
 		if len(items) == 0 {
@@ -267,6 +283,9 @@ func main() {
 		successCount := 0
 		totalLabels := 0
 		
+		logFunc("--- Starting Print Job ---")
+		logFunc("Printer: %s", pName)
+
 		for _, item := range items {
 			q, err := strconv.Atoi(item.Qty)
 			if err != nil || q <= 0 {
@@ -281,23 +300,15 @@ func main() {
 			
 			zpl := ProcessTemplate(templateContent, replacements)
 			
-			// Send to printer q times
-			// Optimization: Could send Qty command ^PQq if generic, but template logic is simpler looped for now 
-			// checking template for ^PQ...
-			// The current template has ^PQ1,,,Y. We could modify the ZPL to Use ^PQ<qty> but string replace is safer.
-			// Actually looping print jobs `q` times is slow for Windows spooler. 
-			// Better to inject `^PQ` + q.
-			// But user asked for "send updated instructions". 
-			// Let's stick to loop for absolute simplicity, OR better: Modify the ^PQ command.
-			// Current template ends with ^PQ1,,,Y
-			// Let's replace ^PQ1 with ^PQ<q>
+			logFunc("Printing Item: %s (Qty: %d)", item.Name, q)
+			logFunc("Sent ZPL:\n%s", zpl)
 			
-			// But wait, the template has hardcoded ^PQ1.
-			// Let's just loop for now to be safe and robust, unless Qty is huge.
+			// Send to printer q times
 			for i := 0; i < q; i++ {
 				err := SendToPrinter(pName, []byte(zpl))
 				if err != nil {
 					statusLabel.SetText(fmt.Sprintf("Error printing %s: %v", item.Name, err))
+					logFunc("ERROR: %v", err)
 					return
 				}
 			}
@@ -307,6 +318,7 @@ func main() {
 		
 		statusLabel.SetText(fmt.Sprintf("Sent jobs for %d items (%d total labels)", successCount, totalLabels))
 		dialog.ShowInformation("Complete", fmt.Sprintf("Printed %d labels.", totalLabels), w)
+		logFunc("--- Print Job Complete ---")
 	})
 
 	// Layout
@@ -330,6 +342,9 @@ func main() {
 		),
 		printBtn,
 		statusLabel,
+		widget.NewSeparator(),
+		widget.NewLabel("Log Output:"),
+		container.NewGridWrap(fyne.NewSize(780, 150), logEntry), // Scrollable log area
 		widget.NewSeparator(),
 		widget.NewLabel("Review Items (Edit Quantity in Table):"),
 	)

@@ -81,11 +81,13 @@ func SendToPrinter(printerName string, data []byte) error {
 		
 		destination := fmt.Sprintf("\\\\localhost\\%s", printerName)
 		
-		// Command: cmd /c copy /b <file> <destination>
-		cmd := exec.Command("cmd", "/c", "copy", "/b", tempFile, destination)
+		// Use explicit quoting for safety against spaces in paths/names
+		// cmd /c "copy /b "source" "dest""
+		commandStr := fmt.Sprintf("copy /b \"%s\" \"%s\"", tempFile, destination)
+		cmd := exec.Command("cmd", "/c", commandStr)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("print command failed: %v, output: %s", err, string(output))
+			return fmt.Errorf("print command failed: %v, output: %s, command: %s", err, string(output), commandStr)
 		}
 	} else {
 		// Linux/Mac fallback for testing (mock)
