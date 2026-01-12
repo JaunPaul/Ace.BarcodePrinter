@@ -345,7 +345,13 @@ func main() {
 func loadDefaultTemplate() string {
     content, err := os.ReadFile("ace_label_template_small_barcode.prn")
     if err == nil {
-        return string(content)
+        // Strip BOM if present
+        s := string(content)
+        if strings.HasPrefix(s, "\uFEFF") {
+            s = strings.TrimPrefix(s, "\uFEFF")
+        }
+        // Also strip any leading whitespace/DLE if strictly needed, but BOM is the main culprit
+        return s
     }
     return `^XA^FDError Loading Template^FS^XZ`
 }
