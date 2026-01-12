@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
 )
 
 type PrintItem struct {
@@ -48,9 +51,42 @@ func main() {
 	qtyMapSelect := widget.NewSelect([]string{}, func(s string) {}) // New Stock/Qty mapping
 
 	// 3. Printer Settings
-	printerNameEntry := widget.NewEntry()
-	printerNameEntry.SetPlaceHolder("Enter Printer Name")
-	printerNameEntry.Text = "ZDesigner GK420d"
+	printerSelect := widget.NewSelect([]string{}, func(s string) {})
+	printerSelect.PlaceHolder = "Select Printer..."
+
+	refreshPrinters := func() {
+		printers, err := GetPrinters()
+		if err != nil {
+			// If we fail, just show one dummy or leave empty logic?
+			// Best to just log error to status
+			statusLabel.SetText("Failed to load printers: " + err.Error())
+			return
+		}
+		printerSelect.Options = printers
+		printerSelect.Refresh()
+		
+		// Try to select the previous one or default
+		if len(printers) > 0 {
+			printerSelect.SetSelected(printers[0])
+			// If "ZDesigner" exists, prefer it
+			for _, p := range printers {
+				if strings.Contains(p, "ZDesigner") || strings.Contains(p, "Zebra") {
+					printerSelect.SetSelected(p)
+					break
+				}
+			}
+		}
+	}
+	
+	// Refresh button
+	refreshPrintersBtn := widget.NewButtonWithIcon("", 
+		theme.ViewRefreshIcon(), 
+		func() { refreshPrinters() },
+	)
+	refreshPrintersBtn.SetText("Refresh") // Fallback if icon fails or just text
+
+	// Initial load
+	refreshPrinters()
 
 	// 4. Data Table
 	// We need a Table widget. 
@@ -222,7 +258,7 @@ func main() {
 			dialog.ShowError(fmt.Errorf("no items to print"), w)
 			return
 		}
-		pName := printerNameEntry.Text
+		pName := printerSelect.Selected
 		if pName == "" {
 			dialog.ShowError(fmt.Errorf("printer name required"), w)
 			return
@@ -289,7 +325,9 @@ func main() {
 		),
 		widget.NewSeparator(),
 		widget.NewLabel("Print Settings:"),
-		container.NewGridWithColumns(2, widget.NewLabel("Printer Name:"), printerNameEntry),
+		container.NewGridWithColumns(2, widget.NewLabel("Printer:"), 
+			container.NewBorder(nil, nil, nil, refreshPrintersBtn, printerSelect), // Layout: [Select...][Refresh]
+		),
 		printBtn,
 		statusLabel,
 		widget.NewSeparator(),
